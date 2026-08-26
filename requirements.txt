@@ -1,0 +1,6 @@
+# HTTPS CA bundle shared by the build script and deploy-system OAuth client.
+certifi==2026.7.22
+# Draft 2020-12 validator used by scripts/deploy-sys/src/preflight.py.
+jsonschema==4.26.0
+# Direct dependency used to register the repository's JSON schemas.
+referencing==0.37.0

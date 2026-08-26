@@ -1,0 +1,34 @@
+# Rendered by the deployment system. Do not install this template directly.
+[Unit]
+Description=Monitor NVMe writes and attribute cgroup workloads
+After=local-fs.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart="@ deploy_config.__implicit__.bin_path @"
+StandardOutput=journal
+StandardError=journal
+ReadWritePaths="@ deploy_config.__implicit__.data_path @"
+UMask=0077
+LimitCORE=0
+NoNewPrivileges=yes
+ProtectSystem=strict
+PrivateTmp=yes
+PrivateDevices=no
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=CAP_SYS_ADMIN
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

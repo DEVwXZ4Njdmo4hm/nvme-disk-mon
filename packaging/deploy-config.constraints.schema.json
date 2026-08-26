@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ndm:deploy-config-constraints",
+  "title": "NVMe-Disk-Mon deploy configuration",
+  "description": "Strict schema version 1 contract for deploy.toml.",
+  "type": "object",
+  "required": [
+    "general",
+    "deploy",
+    "install",
+    "post-install"
+  ],
+  "properties": {
+    "general": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "wdir"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-int",
+          "const": 1,
+          "minimum": 1,
+          "maximum": 1
+        },
+        "wdir": {
+          "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-path",
+          "x-ndm-filesystem": {
+            "mode": "dir",
+            "existence": false,
+            "priv": [
+              "r",
+              "w",
+              "x"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "deploy": {
+      "type": "object",
+      "required": [
+        "ndm_cfg",
+        "enable_doc"
+      ],
+      "properties": {
+        "ndm_cfg": {
+          "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-path",
+          "x-ndm-filesystem": {
+            "mode": "file",
+            "existence": true,
+            "priv": [
+              "r"
+            ]
+          }
+        },
+        "enable_doc": {
+          "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-bool"
+        }
+      },
+      "additionalProperties": false
+    },
+    "install": {
+      "type": "object",
+      "required": [
+        "doc_path",
+        "systemd_integration"
+      ],
+      "properties": {
+        "doc_path": {
+          "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-path",
+          "x-ndm-filesystem": {
+            "actor": "root",
+            "mode": "dir",
+            "existence": true,
+            "priv": [
+              "r",
+              "w",
+              "x"
+            ]
+          }
+        },
+        "systemd_integration": {
+          "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-bool"
+        }
+      },
+      "additionalProperties": false
+    },
+    "post-install": {
+      "type": "object",
+      "required": [
+        "send_test_mail",
+        "clean",
+        "daemon"
+      ],
+      "properties": {
+        "send_test_mail": {
+          "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-bool"
+        },
+        "clean": {
+          "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str",
+          "enum": [
+            "none",
+            "except-fail",
+            "always"
+          ]
+        },
+        "daemon": {
+          "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str",
+          "enum": [
+            "none",
+            "start-only",
+            "enable-only",
+            "enable-and-start"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

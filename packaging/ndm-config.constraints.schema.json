@@ -1,0 +1,324 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "ndm:ndm-config-constraints",
+    "$version": 1,
+    "title": "NDM Config Constraints",
+    "description": "Schema for NDM runtime configuration constraints",
+    "type": "object",
+    "$defs": {
+        "x-ndm-cfg-host-label": {
+            "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str-allow-empty",
+            "maxLength": 255,
+            "pattern": "^(?:$|(?![\\s\\S]*[\\u0000-\\u001f\\u007f-\\u009f])(?=[\\s\\S]*\\S)[^\\u0000-\\u001f\\u007f-\\u009f]+)$"
+        },
+        "x-ndm-cfg-identity": {
+            "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str",
+            "maxLength": 255,
+            "pattern": "^(?![\\s\\S]*[\\u0000-\\u001f\\u007f-\\u009f])(?=[\\s\\S]*\\S)[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+        },
+        "x-ndm-cfg-serial": {
+            "allOf": [
+                {
+                    "$ref": "#/$defs/x-ndm-cfg-identity"
+                },
+                {
+                    "pattern": "^\\S(?:[^\\r\\n]*\\S)?$"
+                }
+            ]
+        },
+        "x-ndm-cfg-disk": {
+            "type": "object",
+            "required": [
+                "label",
+                "serial",
+                "path",
+                "detect_window_hr",
+                "w_delta_threshold_gib"
+            ],
+            "properties": {
+                "label": {
+                    "$ref": "#/$defs/x-ndm-cfg-identity"
+                },
+                "serial": {
+                    "$ref": "#/$defs/x-ndm-cfg-serial"
+                },
+                "path": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-path",
+                    "x-ndm-filesystem": {
+                        "actor": "root",
+                        "mode": "block-device",
+                        "priv": [
+                            "r"
+                        ],
+                        "existence": true,
+                        "follow_symlinks": true
+                    }
+                },
+                "detect_window_hr": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-int",
+                    "minimum": 1
+                },
+                "w_delta_threshold_gib": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "additionalProperties": false
+        },
+        "x-ndm-cfg-disk-list": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/x-ndm-cfg-disk"
+            },
+            "minItems": 1,
+            "uniqueItems": true,
+            "x-ndm-uniqueBy": [
+                "path"
+            ]
+        },
+        "x-ndm-cfg-bare-mailbox": {
+            "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str",
+            "minLength": 3,
+            "maxLength": 320,
+            "pattern": "^(?![\\s\\S]*[\\u0000-\\u001f\\u007f-\\u009f])(?=.{1,64}@.{1,253}$)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$"
+        },
+        "x-ndm-cfg-recipient-list": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/x-ndm-cfg-bare-mailbox"
+            },
+            "minItems": 1,
+            "maxItems": 256,
+            "uniqueItems": true,
+            "x-ndm-uniqueCanonical": "bare-mailbox"
+        },
+        "x-ndm-cfg-mail-oauth": {
+            "type": "object",
+            "required": [
+                "oauth_metadata_url",
+                "oauth_scopes",
+                "oauth_username",
+                "oauth_app_id",
+                "oauth_client_secret",
+                "oauth_authorization_extra_params"
+            ],
+            "properties": {
+                "oauth_metadata_url": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str",
+                    "format": "uri",
+                    "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f-\\u009f]+$"
+                },
+                "oauth_scopes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str",
+                        "pattern": "^[\\u0021\\u0023-\\u005B\\u005D-\\u007E]+$"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
+                },
+                "oauth_username": {
+                    "$ref": "#/$defs/x-ndm-cfg-bare-mailbox"
+                },
+                "oauth_app_id": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str"
+                },
+                "oauth_client_secret": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str"
+                },
+                "oauth_authorization_extra_params": {
+                    "type": "object",
+                    "propertyNames": {
+                        "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str",
+                        "not": {
+                            "enum": [
+                                "response_type",
+                                "client_id",
+                                "redirect_uri",
+                                "scope",
+                                "state",
+                                "code_challenge",
+                                "code_challenge_method"
+                            ]
+                        }
+                    },
+                    "additionalProperties": {
+                        "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str-allow-empty"
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "x-ndm-cfg-mail-plain": {
+            "type": "object",
+            "required": [
+                "plain_username",
+                "plain_app_password"
+            ],
+            "properties": {
+                "plain_username": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str"
+                },
+                "plain_app_password": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str"
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "general",
+        "device",
+        "writer_rank",
+        "mail"
+    ],
+    "properties": {
+        "general": {
+            "type": "object",
+            "required": [
+                "schema_version"
+            ],
+            "properties": {
+                "schema_version": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-int",
+                    "const": 1
+                }
+            },
+            "additionalProperties": false
+        },
+        "device": {
+            "type": "object",
+            "required": [
+                "host",
+                "disk_list"
+            ],
+            "properties": {
+                "host": {
+                    "$ref": "#/$defs/x-ndm-cfg-host-label"
+                },
+                "disk_list": {
+                    "$ref": "#/$defs/x-ndm-cfg-disk-list"
+                }
+            },
+            "additionalProperties": false
+        },
+        "writer_rank": {
+            "type": "object",
+            "required": [
+                "rank_length"
+            ],
+            "properties": {
+                "rank_length": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-int",
+                    "minimum": 1
+                }
+            },
+            "additionalProperties": false
+        },
+        "mail": {
+            "type": "object",
+            "required": [
+                "smtp_host",
+                "smtp_port",
+                "smtp_auth_method",
+                "smtp_tls_mode",
+                "send_as",
+                "send_to"
+            ],
+            "properties": {
+                "smtp_host": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str"
+                },
+                "smtp_port": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-int",
+                    "minimum": 1,
+                    "maximum": 65535
+                },
+                "smtp_auth_method": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str",
+                    "enum": [
+                        "PLAIN",
+                        "XOAUTH2",
+                        "OAUTHBEARER"
+                    ]
+                },
+                "smtp_tls_mode": {
+                    "$ref": "ndm:common-config-types#/$defs/x-ndm-cfg-str",
+                    "enum": [
+                        "STARTTLS_REQUIRED",
+                        "IMPLICIT_TLS"
+                    ]
+                },
+                "send_as": {
+                    "$ref": "#/$defs/x-ndm-cfg-bare-mailbox"
+                },
+                "send_to": {
+                    "$ref": "#/$defs/x-ndm-cfg-recipient-list"
+                },
+                "oauth": {
+                    "$ref": "#/$defs/x-ndm-cfg-mail-oauth"
+                },
+                "plain": {
+                    "$ref": "#/$defs/x-ndm-cfg-mail-plain"
+                }
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "required": [
+                            "smtp_auth_method"
+                        ],
+                        "properties": {
+                            "smtp_auth_method": {
+                                "enum": [
+                                    "XOAUTH2",
+                                    "OAUTHBEARER"
+                                ]
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "oauth"
+                        ]
+                    },
+                    "else": {
+                        "not": {
+                            "required": [
+                                "oauth"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "required": [
+                            "smtp_auth_method"
+                        ],
+                        "properties": {
+                            "smtp_auth_method": {
+                                "enum": [
+                                    "PLAIN"
+                                ]
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "plain"
+                        ]
+                    },
+                    "else": {
+                        "not": {
+                            "required": [
+                                "plain"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "additionalProperties": false
+        }
+    },
+    "additionalProperties": false
+}

@@ -1,0 +1,40 @@
+{
+  "rust-analyzer.server.path": "${workspaceFolder}/build/rust/cargo/bin/rust-analyzer",
+  "rust-analyzer.server.extraEnv": {
+    "CARGO": "${workspaceFolder}/build/rust/cargo/bin/cargo",
+    "CARGO_HOME": "${workspaceFolder}/build/rust/cargo",
+    "RUSTC": "${workspaceFolder}/build/rust/cargo/bin/rustc",
+    "RUSTUP_HOME": "${workspaceFolder}/build/rust/rustup",
+    "RUSTUP_TOOLCHAIN": "stable",
+    "PATH": "${workspaceFolder}/build/rust/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "TMPDIR": "${workspaceFolder}/build/rust/tmp/debug",
+    "TMP": "${workspaceFolder}/build/rust/tmp/debug",
+    "TEMP": "${workspaceFolder}/build/rust/tmp/debug"
+  },
+  "rust-analyzer.cargo.targetDir": "build/debug",
+  "rust-analyzer.cargo.extraEnv": {
+    "CARGO": "${workspaceFolder}/build/rust/cargo/bin/cargo",
+    "CARGO_HOME": "${workspaceFolder}/build/rust/cargo",
+    "RUSTC": "${workspaceFolder}/build/rust/cargo/bin/rustc",
+    "RUSTUP_HOME": "${workspaceFolder}/build/rust/rustup",
+    "RUSTUP_TOOLCHAIN": "stable",
+    "PATH": "${workspaceFolder}/build/rust/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "TMPDIR": "${workspaceFolder}/build/rust/tmp/debug",
+    "TMP": "${workspaceFolder}/build/rust/tmp/debug",
+    "TEMP": "${workspaceFolder}/build/rust/tmp/debug"
+  },
+  "python.analysis.typeCheckingMode": "standard",
+  "codeStatsViewer.excludeDirs": [
+    "build",
+    ".venv",
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    "coverage",
+    ".vscode",
+    ".next",
+    "out",
+    "vendor"
+  ]
+}

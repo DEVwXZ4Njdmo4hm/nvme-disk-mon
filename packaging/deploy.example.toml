@@ -1,0 +1,16 @@
+[general]
+schema_version = 1
+wdir = "/dev/shm/ndm-deploy-sys"
+
+[deploy]
+ndm_cfg = "/path/to/nvme-disk-mon/config.toml"
+enable_doc = true
+
+[install]
+doc_path = "/usr/local/share/doc"
+systemd_integration = true
+
+[post-install]
+send_test_mail = true
+clean = "always"
+daemon = "none"

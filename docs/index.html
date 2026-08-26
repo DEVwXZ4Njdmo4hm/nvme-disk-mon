@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NVMe-Disk-Mon command reference</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, sans-serif;
+      line-height: 1.5;
+    }
+
+    body {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    h2 {
+      margin-top: 2rem;
+    }
+
+    code,
+    pre {
+      font-family: ui-monospace, monospace;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 1rem;
+      border: 1px solid currentcolor;
+    }
+
+    dt {
+      margin-top: 1rem;
+      font-weight: 700;
+    }
+
+    dd {
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>NVMe-Disk-Mon @NDM_VERSION@</h1>
+
+    <section aria-labelledby="description">
+      <h2 id="description">Description</h2>
+      <p>
+        NVMe-Disk-Mon (NDM) is a long-running service that monitors host writes
+        to configured NVMe devices, records historical statistics, attributes
+        block writes to cgroup workloads, and sends threshold alerts by email.
+      </p>
+    </section>
+
+    <section aria-labelledby="usage">
+      <h2 id="usage">Usage</h2>
+      <pre><code>nvme-disk-mon [option] [suboption]</code></pre>
+    </section>
+
+    <section aria-labelledby="available-options">
+      <h2 id="available-options">Available Options</h2>
+      <dl>
+        <dt><code>nvme-disk-mon</code></dt>
+        <dd>
+          Run the monitoring daemon with the configuration installed at
+          <code>/etc/nvme-disk-mon/ndm-cfg.toml</code>.
+        </dd>
+
+        <dt><code>help</code></dt>
+        <dd>Show command help without reading the configuration.</dd>
+
+        <dt><code>-h</code>, <code>--help</code></dt>
+        <dd>Show the same command help through the standard option form.</dd>
+
+        <dt><code>version</code></dt>
+        <dd>Show the complete program version string without reading the configuration.</dd>
+
+        <dt><code>-V</code>, <code>--version</code></dt>
+        <dd>Show the same complete program version string through the standard option form.</dd>
+
+        <dt><code>stats</code></dt>
+        <dd>
+          Show the program version, daemon status, and configured device
+          status, including each label, serial number, latest sampled
+          cumulative SMART write amount in GiB, its corresponding UTC sample
+          time, and last anomaly time.
+          Unavailable database values are shown as <code>------</code>.
+        </dd>
+
+        <dt><code>mail authorize</code></dt>
+        <dd>
+          Complete interactive authorization for an XOAUTH2 or OAUTHBEARER
+          mail account.
+        </dd>
+
+        <dt><code>mail validate</code></dt>
+        <dd>Establish a fresh authenticated SMTP session and validate the credentials.</dd>
+
+        <dt><code>mail test-send</code></dt>
+        <dd>Submit one test message using the configured mail account.</dd>
+      </dl>
+    </section>
+  </main>
+</body>
+</html>

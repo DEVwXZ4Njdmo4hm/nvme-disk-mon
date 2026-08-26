@@ -1,0 +1,46 @@
+[general]
+schema_version = 1
+
+[device]
+host = "HostName"
+disk_list = [
+    { label = "Disk 0", serial = "00XX11YY22ZZ", path = "/dev/disk/by-id/disk_0_path", detect_window_hr = 3, w_delta_threshold_gib = 300 },
+    { label = "Disk 1", serial = "11XX22YY33ZZ", path = "/dev/disk/by-id/disk_1_path", detect_window_hr = 3, w_delta_threshold_gib = 300 }
+]
+
+[writer_rank]
+rank_length = 20
+
+[mail]
+smtp_host = "host.mail-provider.domain"
+smtp_port = 587
+
+# "smtp_auth_method" must be one of ["XOAUTH2", "PLAIN", "OAUTHBEARER"].
+# NDM will throw errors if the configured value is unsupported, or if the upstream server
+# does not claim support for the method in its EHLO response.
+smtp_auth_method = "XOAUTH2"
+# Must be one of ["STARTTLS_REQUIRED", "IMPLICIT_TLS"]
+smtp_tls_mode = "STARTTLS_REQUIRED"
+
+send_as = "sending_email@mail-provider.domain"
+send_to = ["recv_0@mail-provider.domain"]
+
+# "mail.oauth" is only meaningful when "mail.smtp_auth_method" configured as "XOAUTH2" or "OAUTHBEARER".
+[mail.oauth]
+oauth_metadata_url = ""
+oauth_scopes = ["provider-specific-mail-scope"]
+
+# OAuth credentials
+oauth_username = ""
+oauth_app_id = ""
+oauth_client_secret = ""
+
+# Extra parameters that NDM will pass through unchanged to the SMTP/OAuth authorization
+# request. Some providers (e.g., Gmail OAuth2) require specific fields such as
+# "access_type=offline".
+oauth_authorization_extra_params = {}
+
+# "mail.plain" is only meaningful when "mail.smtp_auth_method" configured as "PLAIN"
+#[mail.plain]
+#plain_username = ""
+#plain_app_password = ""

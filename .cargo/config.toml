@@ -1,0 +1,4 @@
+[build]
+# Keep unspecialized Cargo and rust-analyzer output out of the repository root.
+# The generated release environment overrides this with build/release.
+target-dir = "build/debug"
