@@ -17,9 +17,9 @@ use super::{
     DatabaseHandle, DatabaseRuntime, DbRequest, DbWriteError, DeviceRegistration,
     REQUEST_EXECUTING, RecoveredSmartBaseline, SmartSampleBatch, WriterBucketBatch,
     schema::{
-        self, DeviceTableNames, apply_device_registrations, initialize_or_validate_v1,
-        load_recovery_state, open_writer_connection, register_devices_startup,
-        validate_device_registrations, validated_device_tables,
+        self, DeviceTableNames, apply_device_registrations, checkpoint_startup_wal,
+        initialize_or_validate_v1, load_recovery_state, open_writer_connection,
+        register_devices_startup, validate_device_registrations, validated_device_tables,
     },
 };
 use crate::writer::history::WriterHistory;
@@ -126,6 +126,7 @@ fn initialize_writer(
     devices: &[DeviceRegistration],
 ) -> Result<WriterInitialization, DbWriteError> {
     let mut connection = open_writer_connection(path)?;
+    checkpoint_startup_wal(&connection)?;
     initialize_or_validate_v1(&mut connection)?;
     register_devices_startup(&mut connection, devices)?;
     let tables = validated_device_tables(&connection)?;
@@ -951,6 +952,58 @@ mod tests {
             })
         );
         second.shutdown().expect("second shutdown");
+    }
+
+    #[test]
+    fn startup_checkpoints_committed_wal_before_loading_recovery_state() {
+        let directory = tempdir().expect("temporary directory");
+        let path = directory.path().join("stats.db");
+        let device = registration();
+        let mut original = open_writer_connection(&path).expect("open original writer");
+        initialize_or_validate_v1(&mut original).expect("initialize schema");
+        register_devices_startup(&mut original, std::slice::from_ref(&device))
+            .expect("register device");
+        let checkpoint_busy: i64 = original
+            .query_row("PRAGMA main.wal_checkpoint(TRUNCATE);", [], |row| {
+                row.get(0)
+            })
+            .expect("clear initial WAL");
+        assert_eq!(checkpoint_busy, 0);
+        original
+            .execute_batch("PRAGMA wal_autocheckpoint = 0;")
+            .expect("disable automatic checkpoints");
+
+        let tables = device_table_names(&device.hash_id).expect("table names");
+        original
+            .execute(
+                &format!(
+                    "INSERT INTO {} (hash_id, timestamp, data_units_written_be, write_amount_bytes) \
+                     VALUES (?1, ?2, ?3, NULL);",
+                    tables.data_identifier
+                ),
+                params![device.hash_id, 180_000_i64, 77_u128.to_be_bytes()],
+            )
+            .expect("commit WAL-backed sample");
+        let (busy, log_frames, checkpointed_frames): (i64, i64, i64) = original
+            .query_row("PRAGMA main.wal_checkpoint(NOOP);", [], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })
+            .expect("inspect pending WAL frames");
+        assert_eq!(busy, 0);
+        assert!(log_frames > checkpointed_frames);
+        let wal_path = PathBuf::from(format!("{}-wal", path.display()));
+
+        let (recovered_connection, _, recovery) =
+            initialize_writer(&path, std::slice::from_ref(&device)).expect("recover startup WAL");
+        assert_eq!(
+            recovery.get(&device.hash_id),
+            Some(&RecoveredSmartBaseline {
+                timestamp: 180_000,
+                data_units_written: 77,
+            })
+        );
+        assert_eq!(std::fs::metadata(&wal_path).expect("WAL metadata").len(), 0);
+        drop(recovered_connection);
     }
 
     #[test]

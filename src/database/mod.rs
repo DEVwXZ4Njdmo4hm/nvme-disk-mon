@@ -126,8 +126,6 @@ pub(crate) enum DbWriteError {
     CommitAcknowledgementLost {
         request_id: u64,
     },
-    // Reserved for an explicit shutdown or maintenance checkpoint operation.
-    #[allow(dead_code)]
     Checkpoint {
         source: ErrorSource,
     },

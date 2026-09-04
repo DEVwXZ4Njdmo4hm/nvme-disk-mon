@@ -139,6 +139,22 @@ pub(crate) fn open_writer_connection(path: &Path) -> Result<Connection, DbWriteE
     Ok(connection)
 }
 
+pub(super) fn checkpoint_startup_wal(connection: &Connection) -> Result<(), DbWriteError> {
+    let busy: i64 = connection
+        .query_row("PRAGMA main.wal_checkpoint(TRUNCATE);", [], |row| {
+            row.get(0)
+        })
+        .map_err(|source| DbWriteError::Checkpoint {
+            source: Box::new(source),
+        })?;
+    if busy != 0 {
+        return Err(DbWriteError::Checkpoint {
+            source: Box::new(std::io::Error::other("startup WAL checkpoint was blocked")),
+        });
+    }
+    Ok(())
+}
+
 pub(crate) fn open_query_connection(path: &Path) -> Result<Connection, DbWriteError> {
     let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let connection =

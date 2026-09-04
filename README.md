@@ -58,6 +58,9 @@ mkdir -m 0700 build/local-debug
 | 状态数据库 | `/etc/nvme-disk-mon/stats.db` |
 | OAuth token cache | `/etc/nvme-disk-mon/oauth_token.json` |
 
+daemon 的数据库写者在启动时执行一次 WAL checkpoint。SQLite 会将 WAL 中已经提交但尚未
+写回主数据库的页写回 `stats.db` 并清空 WAL；checkpoint 受阻或失败时，daemon 启动失败。
+
 ## 命令行
 
 不带子命令时，程序以前台 daemon 方式运行。其它命令为：
@@ -128,8 +131,8 @@ daemon = "none"
 部署过程先完成所有调用者可见的配置、设备路径形式、源码、网络与 WDIR 预检，再请求
 root 授权。设备节点是否解析为块设备及 root 可读性在授权后由固定的只读命令检查。固定
 `/run/ndm-deploy-sys` 目录提供跨调用 UID 的全局互斥。取得注册后，部署器只用固定只读
-root 命令检查安装目录、挂载边界、已有 `stats.db` 和 systemd manager；这些检查完成前
-不会创建 WDIR 或修改持久化目标。
+root 命令检查安装目录、挂载边界、已有 `stats.db` 及其 WAL/SHM 伴随文件和 systemd
+manager；这些检查完成前不会创建 WDIR 或修改持久化目标。
 
 源码选择遵循 Git 和根 `.gitignore`，并排除工作树中已经删除的 tracked 文件。控制器创建
 mode `0700` 的 WDIR，暂存两份配置，创建 WDIR 项目 venv，确认 NDM 配置仍与本地预检的
@@ -137,8 +140,9 @@ mode `0700` 的 WDIR，暂存两份配置，创建 WDIR 项目 venv，确认 NDM
 固定 Release 构建。Python 控制流始终留在原控制器进程中，WDIR venv 和构建脚本也不会
 作为 sudo 目标执行。
 
-安装阶段只保留旧数据目录中的 `stats.db`，其余文件按当前部署重新生成。二进制、配置、
-HTML 命令参考、Rustdoc 和可选 unit 都从明确的 WDIR 产物通过逐条 root 命令安装；文档
+安装阶段保留旧数据目录中的 `stats.db`、`stats.db-wal` 和 `stats.db-shm`，由 daemon
+下次启动时完成 WAL 恢复；其余文件按当前部署重新生成。二进制、配置、HTML 命令参考、
+Rustdoc 和可选 unit 都从明确的 WDIR 产物通过逐条 root 命令安装；文档
 首页固定为 `doc_path/nvme-disk-mon/index.html`。每次文档安装先清空这个项目专属目录，旧版
 依赖 crate 页面不会残留。启用 systemd 时，
 [service 模板](packaging/templates/nvme-disk-mon.service.template)渲染到

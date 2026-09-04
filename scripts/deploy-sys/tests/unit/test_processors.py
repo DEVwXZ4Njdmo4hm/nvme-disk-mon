@@ -11,7 +11,15 @@ sys.path.insert(0, str(SOURCE))
 
 from build_processor import BuildArtifacts  # noqa: E402
 from install_processor import install_release  # noqa: E402
-from misc import BIN_PATH, CONF_PATH, DATA_PATH, DOC_DIRECTORY_NAME, STATS_PATH  # noqa: E402
+from misc import (  # noqa: E402
+    BIN_PATH,
+    CONF_PATH,
+    DATA_PATH,
+    DOC_DIRECTORY_NAME,
+    STATS_PATH,
+    STATS_SHM_PATH,
+    STATS_WAL_PATH,
+)
 from oauth2_helper import authentication_commands  # noqa: E402
 from post_install_processor import daemon_commands  # noqa: E402
 from preflight import (  # noqa: E402
@@ -72,7 +80,7 @@ class ProcessorTests(unittest.TestCase):
         self.assertIn("enable", daemon_commands("enable-only")[0])
         self.assertIn("--now", daemon_commands("enable-and-start")[0])
 
-    def test_install_preserves_only_stats_and_installs_fixed_targets(self) -> None:
+    def test_install_preserves_database_files_and_installs_fixed_targets(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             binary = root / "nvme-disk-mon"
@@ -88,8 +96,17 @@ class ProcessorTests(unittest.TestCase):
             find_command = next(
                 command for command in runner.commands if command[0] == "/usr/bin/find"
             )
-            self.assertIn(str(DATA_PATH), find_command)
-            self.assertIn(str(STATS_PATH), find_command)
+            expected_find_command: list[str] = [
+                "/usr/bin/find",
+                str(DATA_PATH),
+                "-depth",
+                "-mindepth",
+                "1",
+            ]
+            for path in (STATS_PATH, STATS_WAL_PATH, STATS_SHM_PATH):
+                expected_find_command.extend(("!", "-path", str(path)))
+            expected_find_command.append("-delete")
+            self.assertEqual(find_command, tuple(expected_find_command))
             flattened = "\n".join(" ".join(command) for command in runner.commands)
             self.assertIn(str(BIN_PATH), flattened)
             self.assertIn(str(CONF_PATH), flattened)

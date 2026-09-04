@@ -11,7 +11,7 @@ from misc import (
     CONF_PATH,
     DATA_PATH,
     DOC_DIRECTORY_NAME,
-    STATS_PATH,
+    STATS_FILES,
     UNIT_DIRECTORY,
     UNIT_PATH,
 )
@@ -137,7 +137,7 @@ def install_release(
     staged_config: Path,
     rendered_unit: Path | None,
 ) -> InstallResult:
-    """Install the build and retain only stats.db from the prior data directory."""
+    """Install the build while retaining the SQLite database files."""
     config_bytes = staged_config.read_bytes()
     if hashlib.sha256(config_bytes).hexdigest() != artifacts.config_checksum:
         raise ValueError("待安装配置与构建时注入的 SHA-256 不一致")
@@ -153,6 +153,9 @@ def install_release(
             DATA_PATH,
         )
     )
+    preserve_arguments: list[str | Path] = []
+    for path in STATS_FILES:
+        preserve_arguments.extend(("!", "-path", path))
     runner.run(
         (
             "/usr/bin/find",
@@ -160,9 +163,7 @@ def install_release(
             "-depth",
             "-mindepth",
             "1",
-            "!",
-            "-path",
-            STATS_PATH,
+            *preserve_arguments,
             "-delete",
         )
     )

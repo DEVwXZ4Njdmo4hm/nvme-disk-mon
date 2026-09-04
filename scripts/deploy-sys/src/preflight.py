@@ -17,11 +17,14 @@ from typing import Any
 from urllib.request import Request, urlopen
 
 from jsonschema import Draft202012Validator
+from referencing import Registry, Resource
+
 from misc import (
     BIN_PATH,
     CONF_PATH,
     DATA_PATH,
     PROJECT_ROOT,
+    STATS_FILES,
     STATS_PATH,
     UNIT_DIRECTORY,
     UNIT_PATH,
@@ -29,7 +32,6 @@ from misc import (
     write_private_file,
 )
 from privilege import PrivilegeRunner
-from referencing import Registry, Resource
 
 MAX_CONFIG_BYTES = 4 * 1024 * 1024
 RUST_DISTRIBUTION_URL = "https://static.rust-lang.org/dist/channel-rust-stable.toml.sha256"
@@ -646,14 +648,23 @@ def run_privileged_preflight(
             raise PermissionError(f"固定 data_path 必须由 root:root 所有：{DATA_PATH}")
         if data_metadata.permissions & 0o077:
             raise PermissionError(f"固定 data_path 不能向 group/other 开放：{DATA_PATH}")
-    stats_metadata = _root_stat(runner, STATS_PATH)
-    if stats_metadata is not None:
-        if not stat.S_ISREG(stats_metadata.mode) or stats_metadata.links != 1:
-            raise ValueError(f"已有 stats.db 必须是单链接普通文件：{STATS_PATH}")
-        if stats_metadata.uid != 0 or stats_metadata.gid != 0:
-            raise PermissionError(f"已有 stats.db 必须由 root:root 所有：{STATS_PATH}")
-        if stats_metadata.permissions & 0o077:
-            raise PermissionError(f"已有 stats.db 不能向 group/other 开放：{STATS_PATH}")
+    stats_files = {path: _root_stat(runner, path) for path in STATS_FILES}
+    if stats_files[STATS_PATH] is None:
+        orphan = next(
+            (path for path in STATS_FILES[1:] if stats_files[path] is not None),
+            None,
+        )
+        if orphan is not None:
+            raise ValueError(f"SQLite 伴随文件缺少主数据库：{orphan}")
+    for path, metadata in stats_files.items():
+        if metadata is None:
+            continue
+        if not stat.S_ISREG(metadata.mode) or metadata.links != 1:
+            raise ValueError(f"已有数据库文件必须是单链接普通文件：{path}")
+        if metadata.uid != 0 or metadata.gid != 0:
+            raise PermissionError(f"已有数据库文件必须由 root:root 所有：{path}")
+        if metadata.permissions & 0o077:
+            raise PermissionError(f"已有数据库文件不能向 group/other 开放：{path}")
 
     mounts = _mount_targets(runner)
     _reject_mount_boundary(DATA_PATH, mounts)

@@ -13,7 +13,15 @@ SOURCE = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(SOURCE))
 
 import preflight  # noqa: E402
-from misc import BIN_PATH, DATA_PATH, PROJECT_ROOT, STATS_PATH  # noqa: E402
+from misc import (  # noqa: E402
+    BIN_PATH,
+    DATA_PATH,
+    PROJECT_ROOT,
+    STATS_FILES,
+    STATS_PATH,
+    STATS_SHM_PATH,
+    STATS_WAL_PATH,
+)
 from preflight import (  # noqa: E402
     DeploymentConfig,
     DeploySection,
@@ -41,9 +49,17 @@ class ReadOnlyRootRunner:
     euid = os.geteuid()
     egid = os.getegid()
 
-    def __init__(self, *, device_readable: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        device_readable: bool = True,
+        state_files: frozenset[Path] = frozenset(),
+        unsafe_state_file: Path | None = None,
+    ) -> None:
         self.commands: list[tuple[str, ...]] = []
         self.device_readable = device_readable
+        self.state_files = state_files
+        self.unsafe_state_file = unsafe_state_file
 
     def run(self, command, *, check=True, capture_output=False, **_kwargs):
         command = tuple(str(argument) for argument in command)
@@ -53,7 +69,15 @@ class ReadOnlyRootRunner:
             path = Path(command[-1])
             if "--dereference" in command:
                 return SimpleNamespace(returncode=0, stdout="61b0:0:0:660:1\n")
-            if path in {BIN_PATH, STATS_PATH}:
+            if path == BIN_PATH:
+                return SimpleNamespace(returncode=1, stdout="")
+            if path in STATS_FILES:
+                if path in self.state_files:
+                    permissions = "640" if path == self.unsafe_state_file else "600"
+                    return SimpleNamespace(
+                        returncode=0,
+                        stdout=f"8180:0:0:{permissions}:1\n",
+                    )
                 return SimpleNamespace(returncode=1, stdout="")
             if path == DATA_PATH:
                 return SimpleNamespace(returncode=0, stdout="41c0:0:0:700:2\n")
@@ -216,21 +240,74 @@ class PreflightTests(unittest.TestCase):
         )
         device = Path("/dev/disk/by-id/nvme-SAMPLE_DISK")
         local = LocalPreflight(config, {}, {}, b"", (device,), (), "PLAIN")
-        runner = ReadOnlyRootRunner()
-        result = run_privileged_preflight(runner, local)
-        self.assertFalse(result.service_active)
-        self.assertEqual(result.mount_targets, (Path("/"),))
-        self.assertIn(
-            (
-                "/usr/bin/stat",
-                "--dereference",
-                "--format=%f:%u:%g:%a:%h",
-                "--",
-                str(device),
-            ),
-            runner.commands,
+        state_file_sets = (
+            frozenset((STATS_PATH,)),
+            frozenset((STATS_PATH, STATS_WAL_PATH)),
+            frozenset(STATS_FILES),
         )
-        self.assertIn(("/usr/bin/test", "-r", str(device)), runner.commands)
+        for state_files in state_file_sets:
+            with self.subTest(state_files=state_files):
+                runner = ReadOnlyRootRunner(state_files=state_files)
+                result = run_privileged_preflight(runner, local)
+                self.assertFalse(result.service_active)
+                self.assertEqual(result.mount_targets, (Path("/"),))
+                self.assertIn(
+                    (
+                        "/usr/bin/stat",
+                        "--dereference",
+                        "--format=%f:%u:%g:%a:%h",
+                        "--",
+                        str(device),
+                    ),
+                    runner.commands,
+                )
+                self.assertIn(("/usr/bin/test", "-r", str(device)), runner.commands)
+                for path in (STATS_PATH, STATS_WAL_PATH, STATS_SHM_PATH):
+                    self.assertIn(
+                        (
+                            "/usr/bin/stat",
+                            "--format=%f:%u:%g:%a:%h",
+                            "--",
+                            str(path),
+                        ),
+                        runner.commands,
+                    )
+
+    def test_privileged_preflight_rejects_group_accessible_sqlite_companion(self) -> None:
+        config = DeploymentConfig(
+            source_path=Path("/tmp/deploy.toml"),
+            general=GeneralSection(1, Path("/tmp/work")),
+            deploy=DeploySection(Path("/tmp/ndm.toml"), False),
+            install=InstallSection(Path("/usr/local/share/doc"), False),
+            post_install=PostInstallSection(False, "none", "none"),
+        )
+        device = Path("/dev/disk/by-id/nvme-SAMPLE_DISK")
+        local = LocalPreflight(config, {}, {}, b"", (device,), (), "PLAIN")
+        runner = ReadOnlyRootRunner(
+            state_files=frozenset((STATS_PATH, STATS_WAL_PATH)),
+            unsafe_state_file=STATS_WAL_PATH,
+        )
+
+        with self.assertRaisesRegex(PermissionError, "不能向 group/other 开放"):
+            run_privileged_preflight(runner, local)
+
+    def test_privileged_preflight_rejects_sqlite_companion_without_main_database(
+        self,
+    ) -> None:
+        config = DeploymentConfig(
+            source_path=Path("/tmp/deploy.toml"),
+            general=GeneralSection(1, Path("/tmp/work")),
+            deploy=DeploySection(Path("/tmp/ndm.toml"), False),
+            install=InstallSection(Path("/usr/local/share/doc"), False),
+            post_install=PostInstallSection(False, "none", "none"),
+        )
+        device = Path("/dev/disk/by-id/nvme-SAMPLE_DISK")
+        local = LocalPreflight(config, {}, {}, b"", (device,), (), "PLAIN")
+        for companion in (STATS_WAL_PATH, STATS_SHM_PATH):
+            with self.subTest(companion=companion):
+                runner = ReadOnlyRootRunner(state_files=frozenset((companion,)))
+                with self.assertRaisesRegex(ValueError, "SQLite 伴随文件缺少主数据库"):
+                    run_privileged_preflight(runner, local)
 
     def test_privileged_preflight_rejects_device_root_cannot_read(self) -> None:
         config = DeploymentConfig(
