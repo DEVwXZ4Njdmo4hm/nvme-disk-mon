@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Declarative source deployment controller for NVMe-Disk-Mon"
 requires-python = ">=3.14"
 dependencies = [
-  "certifi==2026.7.22",
+  "certifi==2026.10.18",
   "jsonschema==4.26.0",
   "referencing==0.37.0",
 ]
